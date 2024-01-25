@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "Node",
+    "target": "ESNext",
+    "module": "CommonJS",
+    "strict": false,
+    "lib": ["DOM", "DOM.Iterable", "ES2021"],
+
+    "outDir": "build",
+    "types": ["./types", "node"],
+
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": false,
+    "sourceMap": true,
+    "pretty": true
+  },
+
+  "include": ["src"]
+}
