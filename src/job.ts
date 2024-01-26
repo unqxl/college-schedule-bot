@@ -34,6 +34,7 @@ export = (prisma: PrismaClient, client: Telegraf) => {
   return Cron("0 0 */1 * * *", { timezone: "Europe/Moscow" }, async () => {
     const users = await prisma.mailingUser.findMany();
     const data = await getData();
+    if (!data) return;
 
     const html = data.childNodes[2];
     const body = html.childNodes[3];
@@ -71,16 +72,14 @@ export = (prisma: PrismaClient, client: Telegraf) => {
           if (existsSync(`./cache/${name}.xlsx`)) {
             await client.telegram.sendDocument(user.user_id, {
               source: `./cache/${name}.xlsx`,
-              filename: `${name}.xslx`,
+              filename: `${name}.xlsx`,
             });
           } else {
             downloadFile(schedule_link, name, "xlsx").then(async () => {
               await client.telegram.sendDocument(user.user_id, {
                 source: `./cache/${name}.xlsx`,
-                filename: `${name}.xslx`,
+                filename: `${name}.xlsx`,
               });
-
-              return true;
             });
           }
 

@@ -18,9 +18,14 @@ export async function downloadFile(url: string, filename: string, ext: string) {
 }
 
 export async function getData() {
-  const result = await Axios.get(process.env.SCHEDULE_URL);
-  const document = parseHtmlDocument(result.data);
+  var result;
+  try {
+    result = await Axios.get(process.env.SCHEDULE_URL);
+  } catch (error) {
+    return null;
+  }
 
+  const document = parseHtmlDocument(result.data);
   return document;
 }
 

@@ -3,7 +3,7 @@ console.clear();
 
 import { downloadFile, getData, parse, parseLinks } from "./functions";
 import { Markup, Telegraf } from "telegraf";
-import { PrismaClient } from "@prisma/client";
+import { LastRecord, MailingUser, PrismaClient } from "@prisma/client";
 import { existsSync } from "node:fs";
 import JobFile from "./job";
 
@@ -18,23 +18,7 @@ client.start(async (ctx) => {
     where: { user_id: ctx.from.id },
   });
 
-  if (data) {
-    const keyboard = Markup.inlineKeyboard([
-      Markup.button.callback("Да", "action:disable_mail"),
-      Markup.button.callback("Нет", "action:continue_mail"),
-    ]);
-
-    const message = await ctx.reply(
-      "Мне удалось найти вас в базе данных для рассылки\nВы хотите <b>отказаться</b> от рассылки?",
-      {
-        parse_mode: "HTML",
-        reply_markup: keyboard.reply_markup,
-      }
-    );
-
-    temp[ctx.from.id] = message.message_id;
-    return true;
-  } else {
+  if (!data) {
     const keyboard = Markup.inlineKeyboard([
       Markup.button.callback("Да", "action:enable_mail"),
       Markup.button.callback("Нет", "action:ignore_mail"),
@@ -51,10 +35,34 @@ client.start(async (ctx) => {
     temp[ctx.from.id] = message.message_id;
     return true;
   }
+
+  const keyboard = Markup.inlineKeyboard([
+    Markup.button.callback("Да", "action:disable_mail"),
+    Markup.button.callback("Нет", "action:continue_mail"),
+  ]);
+
+  const message = await ctx.reply(
+    "Мне удалось найти вас в базе данных для рассылки\nВы хотите <b>отказаться</b> от рассылки?",
+    {
+      parse_mode: "HTML",
+      reply_markup: keyboard.reply_markup,
+    }
+  );
+
+  temp[ctx.from.id] = message.message_id;
+  return true;
 });
 
 client.command("schedule", async (ctx) => {
   const data = await getData();
+  if (!data) {
+    return ctx.reply(
+      "❌ <b>Произошла ошибка во время получения информации...</b>",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
 
   const html = data.childNodes[2];
   const body = html.childNodes[3];
@@ -76,52 +84,50 @@ client.command("schedule", async (ctx) => {
   if (existsSync(`./cache/${name}.xlsx`)) {
     await ctx.sendDocument({
       source: `./cache/${name}.xlsx`,
-      filename: `${name}.xslx`,
+      filename: `${name}.xlsx`,
     });
   } else {
     downloadFile(file_link, name, "xlsx").then(async () => {
       await ctx.sendDocument({
         source: `./cache/${name}.xlsx`,
-        filename: `${name}.xslx`,
+        filename: `${name}.xlsx`,
       });
 
       return true;
     });
   }
 
-  const record = await prisma.lastRecord.findFirst({
+  var record = await prisma.lastRecord.findFirst({
     where: { user_id: ctx.from.id },
   });
 
-  if (!record) {
-    await prisma.lastRecord.create({
-      data: {
-        user_id: ctx.from.id,
+  if (!record) return true;
+  await prisma.lastRecord.update({
+    data: {
+      user_id: ctx.from.id,
 
-        schedule: file_link,
-        change: "",
-      },
-    });
-  } else {
-    await prisma.lastRecord.update({
-      data: {
-        user_id: ctx.from.id,
+      schedule: file_link,
+      change: record.change,
+    },
 
-        schedule: file_link,
-        change: record.change,
-      },
-
-      where: {
-        id: record.id,
-      },
-    });
-  }
+    where: {
+      id: record.id,
+    },
+  });
 
   return true;
 });
 
 client.command("changes", async (ctx) => {
   const data = await getData();
+  if (!data) {
+    return ctx.reply(
+      "❌ <b>Произошла ошибка во время получения информации...</b>",
+      {
+        parse_mode: "HTML",
+      }
+    );
+  }
 
   const html = data.childNodes[2];
   const body = html.childNodes[3];
@@ -145,7 +151,7 @@ client.command("changes", async (ctx) => {
   if (existsSync(`./cache/${name}.pdf`)) {
     await ctx.sendDocument({
       source: `./cache/${name}.pdf`,
-      filename: `${name}.xslx`,
+      filename: `${name}.xlsx`,
     });
   } else {
     downloadFile(file_link, name, "pdf").then(async () => {
@@ -158,33 +164,23 @@ client.command("changes", async (ctx) => {
     });
   }
 
-  const record = await prisma.lastRecord.findFirst({
+  var record = await prisma.lastRecord.findFirst({
     where: { user_id: ctx.from.id },
   });
 
-  if (!record) {
-    await prisma.lastRecord.create({
-      data: {
-        user_id: ctx.from.id,
+  if (!record) return true;
+  await prisma.lastRecord.update({
+    data: {
+      user_id: ctx.from.id,
 
-        schedule: "",
-        change: file_link,
-      },
-    });
-  } else {
-    await prisma.lastRecord.update({
-      data: {
-        user_id: ctx.from.id,
+      schedule: record.schedule,
+      change: file_link,
+    },
 
-        schedule: record.schedule,
-        change: file_link,
-      },
-
-      where: {
-        id: record.id,
-      },
-    });
-  }
+    where: {
+      id: record.id,
+    },
+  });
 
   return true;
 });
@@ -217,7 +213,7 @@ client.command("stop", async (ctx) => {
       parse_mode: "HTML",
     });
 
-    return true;
+    return;
   }
 
   const record = await prisma.lastRecord.findFirst({
@@ -248,17 +244,7 @@ client.action("action:enable_mail", async (ctx) => {
     where: { user_id: ctx.from.id },
   });
 
-  if (data) {
-    await ctx.reply("Вы уже <b>подписаны</b> на рассылку!", {
-      parse_mode: "HTML",
-    });
-
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-    }
-
-    return true;
-  } else {
+  if (!data) {
     await prisma.mailingUser.create({
       data: { user_id: ctx.from.id },
     });
@@ -282,12 +268,16 @@ client.action("action:enable_mail", async (ctx) => {
       parse_mode: "HTML",
     });
 
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-    }
-
+    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
     return true;
   }
+
+  await ctx.reply("Вы уже <b>подписаны</b> на рассылку!", {
+    parse_mode: "HTML",
+  });
+
+  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  return true;
 });
 
 client.action("action:disable_mail", async (ctx) => {
@@ -295,33 +285,37 @@ client.action("action:disable_mail", async (ctx) => {
     where: { user_id: ctx.from.id },
   });
 
-  if (data) {
-    await prisma.mailingUser.delete({
-      where: { user_id: ctx.from.id },
-    });
-
-    const record = await prisma.lastRecord.findFirst({
-      where: { user_id: ctx.from.id },
-    });
-
-    if (record) {
-      await prisma.lastRecord.delete({
-        where: {
-          id: record.id,
-        },
-      });
-    }
-
-    await ctx.reply("Вы успешно <b>отказались</b> от рассылки!", {
+  if (!data) {
+    await ctx.reply("❌ Вы <b>не подписывались</b> на рассылку!", {
       parse_mode: "HTML",
     });
 
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-    }
-
+    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
     return true;
   }
+
+  await prisma.mailingUser.delete({
+    where: { id: data.id, user_id: ctx.from.id },
+  });
+
+  const record = await prisma.lastRecord.findFirst({
+    where: { id: data.id, user_id: ctx.from.id },
+  });
+
+  if (record) {
+    await prisma.lastRecord.delete({
+      where: {
+        id: record.id,
+      },
+    });
+  }
+
+  await ctx.reply("Вы успешно <b>отказались</b> от рассылки!", {
+    parse_mode: "HTML",
+  });
+
+  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  return true;
 });
 
 client.action("action:continue_mail", async (ctx) => {
@@ -344,9 +338,8 @@ client.action("action:continue_mail", async (ctx) => {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) {
-    await ctx.deleteMessage(temp[ctx.from.id]);
-  }
+  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  return true;
 });
 
 client.action("action:ignore_mail", async (ctx) => {
@@ -354,22 +347,26 @@ client.action("action:ignore_mail", async (ctx) => {
     where: { user_id: ctx.from.id },
   });
 
-  if (record) {
-    await prisma.lastRecord.delete({
-      where: {
-        id: record.id,
-      },
+  if (!record) {
+    await ctx.reply("Вы <b>не подписывались</b> на получение рассылки!", {
+      parse_mode: "HTML",
     });
+
+    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+    return true;
   }
+
+  await prisma.lastRecord.delete({
+    where: {
+      id: record.id,
+    },
+  });
 
   await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) {
-    await ctx.deleteMessage(temp[ctx.from.id]);
-  }
-
+  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
   return true;
 });
 
