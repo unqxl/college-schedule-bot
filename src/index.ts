@@ -267,18 +267,11 @@ client.action("action:enable_mail", async (ctx) => {
     await ctx.reply("Вы <b>подписались</b> на рассылку!", {
       parse_mode: "HTML",
     });
-
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-      temp[ctx.from.id] = null;
-    }
-
-    return true;
+  } else {
+    await ctx.reply("Вы уже <b>подписаны</b> на рассылку!", {
+      parse_mode: "HTML",
+    });
   }
-
-  await ctx.reply("Вы уже <b>подписаны</b> на рассылку!", {
-    parse_mode: "HTML",
-  });
 
   if (temp[ctx.from.id]) {
     await ctx.deleteMessage(temp[ctx.from.id]);
@@ -297,34 +290,27 @@ client.action("action:disable_mail", async (ctx) => {
     await ctx.reply("❌ Вы <b>не подписывались</b> на рассылку!", {
       parse_mode: "HTML",
     });
+  } else {
+    await prisma.mailingUser.delete({
+      where: { id: data.id, user_id: ctx.from.id.toString() },
+    });
 
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-      temp[ctx.from.id] = null;
+    const record = await prisma.lastRecord.findFirst({
+      where: { id: data.id, user_id: ctx.from.id.toString() },
+    });
+
+    if (record) {
+      await prisma.lastRecord.delete({
+        where: {
+          id: record.id,
+        },
+      });
     }
 
-    return true;
-  }
-
-  await prisma.mailingUser.delete({
-    where: { id: data.id, user_id: ctx.from.id.toString() },
-  });
-
-  const record = await prisma.lastRecord.findFirst({
-    where: { id: data.id, user_id: ctx.from.id.toString() },
-  });
-
-  if (record) {
-    await prisma.lastRecord.delete({
-      where: {
-        id: record.id,
-      },
+    await ctx.reply("Вы <b>отказались</b> от рассылки!", {
+      parse_mode: "HTML",
     });
   }
-
-  await ctx.reply("Вы успешно <b>отказались</b> от рассылки!", {
-    parse_mode: "HTML",
-  });
 
   if (temp[ctx.from.id]) {
     await ctx.deleteMessage(temp[ctx.from.id]);
@@ -350,7 +336,7 @@ client.action("action:continue_mail", async (ctx) => {
     });
   }
 
-  await ctx.reply("Вы успешно <b>согласились</b> на дальнейшую рассылку!", {
+  await ctx.reply("Вы <b>согласились</b> на дальнейшую рассылку!", {
     parse_mode: "HTML",
   });
 
@@ -368,27 +354,20 @@ client.action("action:ignore_mail", async (ctx) => {
   });
 
   if (!record) {
-    await ctx.reply("Вы <b>отказались</b> на получение рассылки!", {
+    await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
       parse_mode: "HTML",
     });
+  } else {
+    await prisma.lastRecord.delete({
+      where: {
+        id: record.id,
+      },
+    });
 
-    if (temp[ctx.from.id]) {
-      await ctx.deleteMessage(temp[ctx.from.id]);
-      temp[ctx.from.id] = null;
-    }
-
-    return true;
+    await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
+      parse_mode: "HTML",
+    });
   }
-
-  await prisma.lastRecord.delete({
-    where: {
-      id: record.id,
-    },
-  });
-
-  await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
-    parse_mode: "HTML",
-  });
 
   if (temp[ctx.from.id]) {
     await ctx.deleteMessage(temp[ctx.from.id]);
