@@ -368,7 +368,7 @@ client.action("action:ignore_mail", async (ctx) => {
   });
 
   if (!record) {
-    await ctx.reply("Вы <b>не подписывались</b> на получение рассылки!", {
+    await ctx.reply("Вы <b>отказались</b> на получение рассылки!", {
       parse_mode: "HTML",
     });
 
