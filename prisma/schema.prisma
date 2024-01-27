@@ -13,7 +13,7 @@ datasource db {
 model MailingUser {
   id Int @id @default(autoincrement())
 
-  user_id Int @db.Integer
+  user_id String @db.VarChar(255)
 
   @@map("mailing_users")
 }
@@ -21,7 +21,7 @@ model MailingUser {
 model LastRecord {
   id Int @id @default(autoincrement())
 
-  user_id  Int    @db.Integer
+  user_id  String @db.VarChar(255)
   schedule String @db.Text()
   change   String @db.Text()
 

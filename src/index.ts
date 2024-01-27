@@ -15,7 +15,7 @@ const job = JobFile(prisma, client);
 
 client.start(async (ctx) => {
   const data = await prisma.mailingUser.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
@@ -98,13 +98,13 @@ client.command("schedule", async (ctx) => {
   }
 
   var record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!record) return true;
   await prisma.lastRecord.update({
     data: {
-      user_id: ctx.from.id,
+      user_id: ctx.from.id.toString(),
 
       schedule: file_link,
       change: record.change,
@@ -165,13 +165,13 @@ client.command("changes", async (ctx) => {
   }
 
   var record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!record) return true;
   await prisma.lastRecord.update({
     data: {
-      user_id: ctx.from.id,
+      user_id: ctx.from.id.toString(),
 
       schedule: record.schedule,
       change: file_link,
@@ -205,7 +205,7 @@ client.command("trigger", async (ctx) => {
 
 client.command("stop", async (ctx) => {
   const data = await prisma.mailingUser.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
@@ -217,7 +217,7 @@ client.command("stop", async (ctx) => {
   }
 
   const record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   await prisma.mailingUser.delete({
@@ -241,22 +241,22 @@ client.command("stop", async (ctx) => {
 // ? [Actions] ? //
 client.action("action:enable_mail", async (ctx) => {
   const data = await prisma.mailingUser.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
     await prisma.mailingUser.create({
-      data: { user_id: ctx.from.id },
+      data: { user_id: ctx.from.id.toString() },
     });
 
     const record = await prisma.lastRecord.findFirst({
-      where: { user_id: ctx.from.id },
+      where: { user_id: ctx.from.id.toString() },
     });
 
     if (!record) {
       await prisma.lastRecord.create({
         data: {
-          user_id: ctx.from.id,
+          user_id: ctx.from.id.toString(),
 
           schedule: "",
           change: "",
@@ -268,7 +268,11 @@ client.action("action:enable_mail", async (ctx) => {
       parse_mode: "HTML",
     });
 
-    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+    if (temp[ctx.from.id]) {
+      await ctx.deleteMessage(temp[ctx.from.id]);
+      temp[ctx.from.id] = null;
+    }
+
     return true;
   }
 
@@ -276,13 +280,17 @@ client.action("action:enable_mail", async (ctx) => {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  if (temp[ctx.from.id]) {
+    await ctx.deleteMessage(temp[ctx.from.id]);
+    temp[ctx.from.id] = null;
+  }
+
   return true;
 });
 
 client.action("action:disable_mail", async (ctx) => {
   const data = await prisma.mailingUser.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
@@ -290,16 +298,20 @@ client.action("action:disable_mail", async (ctx) => {
       parse_mode: "HTML",
     });
 
-    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+    if (temp[ctx.from.id]) {
+      await ctx.deleteMessage(temp[ctx.from.id]);
+      temp[ctx.from.id] = null;
+    }
+
     return true;
   }
 
   await prisma.mailingUser.delete({
-    where: { id: data.id, user_id: ctx.from.id },
+    where: { id: data.id, user_id: ctx.from.id.toString() },
   });
 
   const record = await prisma.lastRecord.findFirst({
-    where: { id: data.id, user_id: ctx.from.id },
+    where: { id: data.id, user_id: ctx.from.id.toString() },
   });
 
   if (record) {
@@ -314,19 +326,23 @@ client.action("action:disable_mail", async (ctx) => {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  if (temp[ctx.from.id]) {
+    await ctx.deleteMessage(temp[ctx.from.id]);
+    temp[ctx.from.id] = null;
+  }
+
   return true;
 });
 
 client.action("action:continue_mail", async (ctx) => {
   const record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!record) {
     await prisma.lastRecord.create({
       data: {
-        user_id: ctx.from.id,
+        user_id: ctx.from.id.toString(),
 
         schedule: "",
         change: "",
@@ -338,13 +354,17 @@ client.action("action:continue_mail", async (ctx) => {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  if (temp[ctx.from.id]) {
+    await ctx.deleteMessage(temp[ctx.from.id]);
+    temp[ctx.from.id] = null;
+  }
+
   return true;
 });
 
 client.action("action:ignore_mail", async (ctx) => {
   const record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id },
+    where: { user_id: ctx.from.id.toString() },
   });
 
   if (!record) {
@@ -352,7 +372,11 @@ client.action("action:ignore_mail", async (ctx) => {
       parse_mode: "HTML",
     });
 
-    if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+    if (temp[ctx.from.id]) {
+      await ctx.deleteMessage(temp[ctx.from.id]);
+      temp[ctx.from.id] = null;
+    }
+
     return true;
   }
 
@@ -366,7 +390,11 @@ client.action("action:ignore_mail", async (ctx) => {
     parse_mode: "HTML",
   });
 
-  if (temp[ctx.from.id]) await ctx.deleteMessage(temp[ctx.from.id]);
+  if (temp[ctx.from.id]) {
+    await ctx.deleteMessage(temp[ctx.from.id]);
+    temp[ctx.from.id] = null;
+  }
+
   return true;
 });
 
