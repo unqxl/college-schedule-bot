@@ -80,17 +80,21 @@ client.command("schedule", async (ctx) => {
   const schedule = schedules[0];
   const file_link = schedule.attributes.getValue("href");
 
-  const name = schedule.childNodes[0].outerHTML.replaceAll(" ", "_");
-  if (existsSync(`./cache/${name}.xlsx`)) {
+  const name = schedule.childNodes[0].outerHTML.replaceAll(" ", "_").slice(22);
+  const first_date = name.slice(0, 10).replaceAll("_", "").replaceAll(".", "-");
+  const second_date = name.slice(12).replaceAll("_", "").replaceAll(".", "-");
+  const filename = `${first_date}_${second_date}`;
+
+  if (existsSync(`./cache/${filename}.xlsx`)) {
     await ctx.sendDocument({
-      source: `./cache/${name}.xlsx`,
-      filename: `${name}.xlsx`,
+      source: `./cache/${filename}.xlsx`,
+      filename: `${filename}.xlsx`,
     });
   } else {
-    downloadFile(file_link, name, "xlsx").then(async () => {
+    downloadFile(file_link, filename, "xlsx").then(async () => {
       await ctx.sendDocument({
-        source: `./cache/${name}.xlsx`,
-        filename: `${name}.xlsx`,
+        source: `./cache/${filename}.xlsx`,
+        filename: `${filename}.xlsx`,
       });
 
       return true;
@@ -138,20 +142,24 @@ client.command("changes", async (ctx) => {
   const col = parse(row.childNodes)[0];
 
   const links = parseLinks(col.childNodes);
-  const schedules = links.filter((l) => {
+  const changes = links.filter((l) => {
     return l.childNodes[0].outerHTML.includes(
       "Изменения в расписании занятий на"
     );
   });
 
-  const schedule = schedules[0];
-  const file_link = schedule.attributes.getValue("href");
+  const change = changes[0];
+  const file_link = change.attributes.getValue("href");
 
-  const name = schedule.childNodes[0].outerHTML.replaceAll(" ", "_");
+  const name = change.childNodes[0].outerHTML
+    .replaceAll(" ", "_")
+    .slice(34)
+    .replaceAll(".", "-");
+
   if (existsSync(`./cache/${name}.pdf`)) {
     await ctx.sendDocument({
       source: `./cache/${name}.pdf`,
-      filename: `${name}.xlsx`,
+      filename: `${name}.pdf`,
     });
   } else {
     downloadFile(file_link, name, "pdf").then(async () => {
@@ -378,7 +386,8 @@ client.action("action:ignore_mail", async (ctx) => {
 });
 
 // ? [Processing] ? //
-client.launch().then(() => console.log("[#] Бот запущен!"));
+client.launch();
+console.log("[#] Бот запущен!");
 
 process.once("SIGINT", () => client.stop("SIGINT"));
 process.once("SIGTERM", () => client.stop("SIGTERM"));

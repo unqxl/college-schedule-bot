@@ -68,17 +68,31 @@ export = (prisma: PrismaClient, client: Telegraf) => {
       if (!record) continue;
       else {
         if (sendSchedule(record, schedule_link)) {
-          const name = schedule.childNodes[0].outerHTML.replaceAll(" ", "_");
-          if (existsSync(`./cache/${name}.xlsx`)) {
+          const name = schedule.childNodes[0].outerHTML
+            .replaceAll(" ", "_")
+            .slice(22);
+
+          const first_date = name
+            .slice(0, 10)
+            .replaceAll("_", "")
+            .replaceAll(".", "-");
+
+          const second_date = name
+            .slice(12)
+            .replaceAll("_", "")
+            .replaceAll(".", "-");
+
+          const filename = `${first_date}_${second_date}`;
+          if (existsSync(`./cache/${filename}.xlsx`)) {
             await client.telegram.sendDocument(user.user_id, {
-              source: `./cache/${name}.xlsx`,
-              filename: `${name}.xlsx`,
+              source: `./cache/${filename}.xlsx`,
+              filename: `${filename}.xlsx`,
             });
           } else {
-            downloadFile(schedule_link, name, "xlsx").then(async () => {
+            downloadFile(schedule_link, filename, "xlsx").then(async () => {
               await client.telegram.sendDocument(user.user_id, {
-                source: `./cache/${name}.xlsx`,
-                filename: `${name}.xlsx`,
+                source: `./cache/${filename}.xlsx`,
+                filename: `${filename}.xlsx`,
               });
             });
           }
@@ -96,7 +110,11 @@ export = (prisma: PrismaClient, client: Telegraf) => {
         }
 
         if (sendChange(record, change_link) && change_index < schedule_index) {
-          const name = change.childNodes[0].outerHTML.replaceAll(" ", "_");
+          const name = change.childNodes[0].outerHTML
+            .replaceAll(" ", "_")
+            .slice(34)
+            .replaceAll(".", "-");
+
           if (existsSync(`./cache/${name}.pdf`)) {
             await client.telegram.sendDocument(user.user_id, {
               source: `./cache/${name}.pdf`,
