@@ -3,20 +3,6 @@ import Axios from "axios";
 import https from "node:https";
 import fs from "node:fs";
 
-export async function downloadFile(url: string, filename: string, ext: string) {
-  return new Promise<boolean>((resolve) => {
-    https.get(url, (res) => {
-      const file = fs.createWriteStream(`./cache/${filename}.${ext}`);
-      res.pipe(file);
-
-      file.on("finish", () => {
-        file.close();
-        resolve(true);
-      });
-    });
-  });
-}
-
 export async function getData() {
   var result;
   try {

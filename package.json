@@ -10,13 +10,13 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.6",
-    "prisma": "5.8.1"
+    "prisma": "5.13.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@prisma/client": "5.8.1",
+    "@prisma/client": "5.13.0",
     "axios": "^1.6.7",
     "croner": "^8.0.0",
     "dotenv": "^16.4.1",

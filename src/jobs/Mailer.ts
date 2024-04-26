@@ -1,7 +1,6 @@
-import { downloadFile, getData, parse, parseLinks } from "./functions";
+import { getData, parse, parseLinks } from "../functions";
 import { LastRecord, PrismaClient } from "@prisma/client";
 import { HTMLElement } from "html-parser.ts";
-import { existsSync } from "fs";
 import { Telegraf } from "telegraf";
 import Cron from "croner";
 
@@ -30,7 +29,7 @@ export = (prisma: PrismaClient, client: Telegraf) => {
     });
   }
 
-  console.log("[#] Job Started");
+  console.log("[#] Mailer Job Started");
   return Cron("0 0 */1 * * *", { timezone: "Europe/Moscow" }, async () => {
     const users = await prisma.mailingUser.findMany();
     const data = await getData();
@@ -83,19 +82,10 @@ export = (prisma: PrismaClient, client: Telegraf) => {
             .replaceAll(".", "-");
 
           const filename = `${first_date}_${second_date}`;
-          if (existsSync(`./cache/${filename}.xlsx`)) {
-            await client.telegram.sendDocument(user.user_id, {
-              source: `./cache/${filename}.xlsx`,
-              filename: `${filename}.xlsx`,
-            });
-          } else {
-            downloadFile(schedule_link, filename, "xlsx").then(async () => {
-              await client.telegram.sendDocument(user.user_id, {
-                source: `./cache/${filename}.xlsx`,
-                filename: `${filename}.xlsx`,
-              });
-            });
-          }
+          await client.telegram.sendDocument(user.user_id, {
+            url: schedule_link,
+            filename: `${filename}.xlsx`,
+          });
 
           await prisma.lastRecord.update({
             data: {
@@ -115,19 +105,10 @@ export = (prisma: PrismaClient, client: Telegraf) => {
             .slice(34)
             .replaceAll(".", "-");
 
-          if (existsSync(`./cache/${name}.pdf`)) {
-            await client.telegram.sendDocument(user.user_id, {
-              source: `./cache/${name}.pdf`,
-              filename: `${name}.pdf`,
-            });
-          } else {
-            downloadFile(change_link, name, "pdf").then(async () => {
-              await client.telegram.sendDocument(user.user_id, {
-                source: `./cache/${name}.pdf`,
-                filename: `${name}.pdf`,
-              });
-            });
-          }
+          await client.telegram.sendDocument(user.user_id, {
+            url: change_link,
+            filename: `${name}.pdf`,
+          });
 
           await prisma.lastRecord.update({
             data: {

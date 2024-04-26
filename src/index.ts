@@ -1,17 +1,18 @@
 import "dotenv/config";
 console.clear();
 
-import { downloadFile, getData, parse, parseLinks } from "./functions";
+import { getData, parse, parseLinks } from "./functions";
 import { Markup, Telegraf } from "telegraf";
-import { LastRecord, MailingUser, PrismaClient } from "@prisma/client";
-import { existsSync } from "node:fs";
-import JobFile from "./job";
+import { PrismaClient } from "@prisma/client";
+
+// ? [Jobs] ? //
+import MailerFile from "./jobs/Mailer";
 
 const client = new Telegraf(process.env.BOT_TOKEN);
 const prisma = new PrismaClient();
 
 const temp: Record<number, number> = {};
-const job = JobFile(prisma, client);
+const job = MailerFile(prisma, client);
 
 client.start(async (ctx) => {
   const data = await prisma.mailingUser.findFirst({
@@ -79,27 +80,23 @@ client.command("schedule", async (ctx) => {
 
   const schedule = schedules[0];
   const file_link = schedule.attributes.getValue("href");
+  const ext = file_link.endsWith(".xlsx")
+    ? "xlsx"
+    : file_link.endsWith(".docx")
+    ? "docx"
+    : file_link.endsWith(".pdf")
+    ? "pdf"
+    : "";
 
   const name = schedule.childNodes[0].outerHTML.replaceAll(" ", "_").slice(22);
   const first_date = name.slice(0, 10).replaceAll("_", "").replaceAll(".", "-");
   const second_date = name.slice(12).replaceAll("_", "").replaceAll(".", "-");
   const filename = `${first_date}_${second_date}`;
 
-  if (existsSync(`./cache/${filename}.xlsx`)) {
-    await ctx.sendDocument({
-      source: `./cache/${filename}.xlsx`,
-      filename: `${filename}.xlsx`,
-    });
-  } else {
-    downloadFile(file_link, filename, "xlsx").then(async () => {
-      await ctx.sendDocument({
-        source: `./cache/${filename}.xlsx`,
-        filename: `${filename}.xlsx`,
-      });
-
-      return true;
-    });
-  }
+  await ctx.sendDocument({
+    url: file_link,
+    filename: `${filename}.${ext}`,
+  });
 
   var record = await prisma.lastRecord.findFirst({
     where: { user_id: ctx.from.id.toString() },
@@ -150,27 +147,23 @@ client.command("changes", async (ctx) => {
 
   const change = changes[0];
   const file_link = change.attributes.getValue("href");
+  const ext = file_link.endsWith(".xlsx")
+    ? "xlsx"
+    : file_link.endsWith(".docx")
+    ? "docx"
+    : file_link.endsWith(".pdf")
+    ? "pdf"
+    : "";
 
   const name = change.childNodes[0].outerHTML
     .replaceAll(" ", "_")
     .slice(34)
     .replaceAll(".", "-");
 
-  if (existsSync(`./cache/${name}.pdf`)) {
-    await ctx.sendDocument({
-      source: `./cache/${name}.pdf`,
-      filename: `${name}.pdf`,
-    });
-  } else {
-    downloadFile(file_link, name, "pdf").then(async () => {
-      await ctx.sendDocument({
-        source: `./cache/${name}.pdf`,
-        filename: `${name}.pdf`,
-      });
-
-      return true;
-    });
-  }
+  await ctx.sendDocument({
+    url: file_link,
+    filename: `${name}.${ext}`,
+  });
 
   var record = await prisma.lastRecord.findFirst({
     where: { user_id: ctx.from.id.toString() },
