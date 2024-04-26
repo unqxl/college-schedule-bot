@@ -1,7 +1,5 @@
 import { HTMLElement, Node, parseHtmlDocument } from "html-parser.ts";
 import Axios from "axios";
-import https from "node:https";
-import fs from "node:fs";
 
 export async function getData() {
   var result;

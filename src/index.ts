@@ -93,28 +93,35 @@ client.command("schedule", async (ctx) => {
   const second_date = name.slice(12).replaceAll("_", "").replaceAll(".", "-");
   const filename = `${first_date}_${second_date}`;
 
-  await ctx.sendDocument({
-    url: file_link,
-    filename: `${filename}.${ext}`,
-  });
+  var errored = false;
+  try {
+    await ctx.sendDocument({
+      url: file_link,
+      filename: `${filename}.${ext}`,
+    });
+  } catch (error) {
+    errored = true;
+  }
 
-  var record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id.toString() },
-  });
+  if (!errored) {
+    var record = await prisma.lastRecord.findFirst({
+      where: { user_id: ctx.from.id.toString() },
+    });
 
-  if (!record) return true;
-  await prisma.lastRecord.update({
-    data: {
-      user_id: ctx.from.id.toString(),
+    if (!record) return true;
+    await prisma.lastRecord.update({
+      data: {
+        user_id: ctx.from.id.toString(),
 
-      schedule: file_link,
-      change: record.change,
-    },
+        schedule: file_link,
+        change: record.change,
+      },
 
-    where: {
-      id: record.id,
-    },
-  });
+      where: {
+        id: record.id,
+      },
+    });
+  }
 
   return true;
 });
@@ -160,28 +167,35 @@ client.command("changes", async (ctx) => {
     .slice(34)
     .replaceAll(".", "-");
 
-  await ctx.sendDocument({
-    url: file_link,
-    filename: `${name}.${ext}`,
-  });
+  var errored = false;
+  try {
+    await ctx.sendDocument({
+      url: file_link,
+      filename: `${name}.${ext}`,
+    });
+  } catch (error) {
+    errored = true;
+  }
 
-  var record = await prisma.lastRecord.findFirst({
-    where: { user_id: ctx.from.id.toString() },
-  });
+  if (!errored) {
+    var record = await prisma.lastRecord.findFirst({
+      where: { user_id: ctx.from.id.toString() },
+    });
 
-  if (!record) return true;
-  await prisma.lastRecord.update({
-    data: {
-      user_id: ctx.from.id.toString(),
+    if (!record) return true;
+    await prisma.lastRecord.update({
+      data: {
+        user_id: ctx.from.id.toString(),
 
-      schedule: record.schedule,
-      change: file_link,
-    },
+        schedule: record.schedule,
+        change: file_link,
+      },
 
-    where: {
-      id: record.id,
-    },
-  });
+      where: {
+        id: record.id,
+      },
+    });
+  }
 
   return true;
 });

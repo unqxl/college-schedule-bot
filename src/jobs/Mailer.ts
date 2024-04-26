@@ -82,21 +82,29 @@ export = (prisma: PrismaClient, client: Telegraf) => {
             .replaceAll(".", "-");
 
           const filename = `${first_date}_${second_date}`;
-          await client.telegram.sendDocument(user.user_id, {
-            url: schedule_link,
-            filename: `${filename}.xlsx`,
-          });
 
-          await prisma.lastRecord.update({
-            data: {
-              schedule: schedule_link,
-              change: record.change,
-            },
+          var errored = false;
+          try {
+            await client.telegram.sendDocument(user.user_id, {
+              url: schedule_link,
+              filename: `${filename}.xlsx`,
+            });
+          } catch (error) {
+            errored = true;
+          }
 
-            where: {
-              id: record.id,
-            },
-          });
+          if (!errored) {
+            await prisma.lastRecord.update({
+              data: {
+                schedule: schedule_link,
+                change: record.change,
+              },
+
+              where: {
+                id: record.id,
+              },
+            });
+          }
         }
 
         if (sendChange(record, change_link) && change_index < schedule_index) {
@@ -105,23 +113,30 @@ export = (prisma: PrismaClient, client: Telegraf) => {
             .slice(34)
             .replaceAll(".", "-");
 
-          await client.telegram.sendDocument(user.user_id, {
-            url: change_link,
-            filename: `${name}.pdf`,
-          });
+          var errored = false;
+          try {
+            await client.telegram.sendDocument(user.user_id, {
+              url: change_link,
+              filename: `${name}.pdf`,
+            });
+          } catch (error) {
+            errored = true;
+          }
 
-          await prisma.lastRecord.update({
-            data: {
-              user_id: user.user_id,
+          if (!errored) {
+            await prisma.lastRecord.update({
+              data: {
+                user_id: user.user_id,
 
-              schedule: schedule_link,
-              change: change_link,
-            },
+                schedule: schedule_link,
+                change: change_link,
+              },
 
-            where: {
-              id: record.id,
-            },
-          });
+              where: {
+                id: record.id,
+              },
+            });
+          }
         }
       }
     }
