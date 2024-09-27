@@ -396,5 +396,5 @@ client.action("action:ignore_mail", async (ctx) => {
 client.launch();
 console.log("[#] Бот запущен!");
 
-process.once("SIGINT", () => client.stop("SIGINT"));
-process.once("SIGTERM", () => client.stop("SIGTERM"));
+process.on("SIGINT", () => client.stop("SIGINT"));
+process.on("SIGTERM", () => client.stop("SIGTERM"));

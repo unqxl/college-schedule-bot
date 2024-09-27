@@ -9,18 +9,18 @@
     "start": "ts-node src/index.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.11.6",
-    "prisma": "5.13.0"
+    "@types/node": "^22.7.3",
+    "prisma": "5.20.0"
   },
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@prisma/client": "5.13.0",
-    "axios": "^1.6.7",
-    "croner": "^8.0.0",
-    "dotenv": "^16.4.1",
+    "@prisma/client": "5.20.0",
+    "axios": "^1.7.7",
+    "croner": "^8.1.1",
+    "dotenv": "^16.4.5",
     "html-parser.ts": "^1.9.1",
-    "telegraf": "^4.15.3"
+    "telegraf": "^4.16.3"
   }
 }

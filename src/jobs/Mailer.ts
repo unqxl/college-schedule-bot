@@ -4,33 +4,26 @@ import { HTMLElement } from "html-parser.ts";
 import { Telegraf } from "telegraf";
 import Cron from "croner";
 
+// ? [Senders] ? //
+const shouldSend = (record: LastRecord, column: string, link: string) =>
+  record[column] !== link;
+
+// ? [Parsers] ? //
+const parseSchedules = (data: HTMLElement[]) =>
+  data.filter((l) => {
+    return l.childNodes[0].outerHTML.includes("Расписание занятий на");
+  });
+
+const parseChanges = (data: HTMLElement[]) =>
+  data.filter((l) => {
+    return l.childNodes[0].outerHTML.includes(
+      "Изменения в расписании занятий на"
+    );
+  });
+
 export = (prisma: PrismaClient, client: Telegraf) => {
-  function sendSchedule(record: LastRecord, link: string) {
-    if (record.schedule !== link) return true;
-    else return false;
-  }
-
-  function sendChange(record: LastRecord, link: string) {
-    if (record.change !== link) return true;
-    else return false;
-  }
-
-  function parseSchedules(data: HTMLElement[]) {
-    return data.filter((l) => {
-      return l.childNodes[0].outerHTML.includes("Расписание занятий на");
-    });
-  }
-
-  function parseChanges(data: HTMLElement[]) {
-    return data.filter((l) => {
-      return l.childNodes[0].outerHTML.includes(
-        "Изменения в расписании занятий на"
-      );
-    });
-  }
-
   console.log("[#] Mailer Job Started");
-  return Cron("0 0 */1 * * *", { timezone: "Europe/Moscow" }, async () => {
+  return Cron("0 */30 * * * *", { timezone: "Europe/Moscow" }, async () => {
     const users = await prisma.mailingUser.findMany();
     const data = await getData();
     if (!data) return;
@@ -66,7 +59,7 @@ export = (prisma: PrismaClient, client: Telegraf) => {
 
       if (!record) continue;
       else {
-        if (sendSchedule(record, schedule_link)) {
+        if (shouldSend(record, "schedule", schedule_link)) {
           const name = schedule.childNodes[0].outerHTML
             .replaceAll(" ", "_")
             .slice(22);
@@ -107,7 +100,10 @@ export = (prisma: PrismaClient, client: Telegraf) => {
           }
         }
 
-        if (sendChange(record, change_link) && change_index < schedule_index) {
+        if (
+          shouldSend(record, "change", change_link) &&
+          change_index < schedule_index
+        ) {
           const name = change.childNodes[0].outerHTML
             .replaceAll(" ", "_")
             .slice(34)
