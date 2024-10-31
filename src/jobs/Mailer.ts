@@ -1,6 +1,7 @@
 import { getData, parse, parseLinks } from "../functions";
 import { LastRecord, PrismaClient } from "@prisma/client";
 import { HTMLElement } from "html-parser.ts";
+import { whitelist } from "..";
 import { Telegraf } from "telegraf";
 import Cron from "croner";
 
@@ -41,6 +42,8 @@ export = (prisma: PrismaClient, client: Telegraf) => {
     const changes = parseChanges(links);
 
     for (const user of users) {
+      if (!whitelist.includes(Number(user.user_id))) continue;
+
       const schedule = schedules[0];
       const schedule_link = schedule.attributes.getValue("href");
       const schedule_index = links.findIndex(

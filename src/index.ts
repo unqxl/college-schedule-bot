@@ -1,20 +1,32 @@
 import "dotenv/config";
 console.clear();
 
-import { getData, parse, parseLinks } from "./functions";
+import { getData, parse, parseLinks, send } from "./functions";
 import { Markup, Telegraf } from "telegraf";
 import { PrismaClient } from "@prisma/client";
+import { readFileSync } from "node:fs";
 
 // ? [Jobs] ? //
+import CheckerFile from "./jobs/Checker";
 import MailerFile from "./jobs/Mailer";
 
 const client = new Telegraf(process.env.BOT_TOKEN);
 const prisma = new PrismaClient();
-
 const temp: Record<number, number> = {};
-const job = MailerFile(prisma, client);
+
+const CheckerJob = CheckerFile(prisma, client);
+const MailerJob = MailerFile(prisma, client);
+
+export const whitelist = readFileSync("./whitelist.txt", "utf-8")
+  .split(",")
+  .map((id) => Number(id));
 
 client.start(async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) {
+    await send(ctx, "☝️");
+    return;
+  }
+
   const data = await prisma.mailingUser.findFirst({
     where: { user_id: ctx.from.id.toString() },
   });
@@ -55,6 +67,11 @@ client.start(async (ctx) => {
 });
 
 client.command("schedule", async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) {
+    await send(ctx, "☝️");
+    return;
+  }
+
   const data = await getData();
   if (!data) {
     return ctx.reply(
@@ -127,14 +144,19 @@ client.command("schedule", async (ctx) => {
 });
 
 client.command("changes", async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) {
+    await send(ctx, "☝️");
+    return;
+  }
+
   const data = await getData();
   if (!data) {
-    return ctx.reply(
-      "❌ <b>Произошла ошибка во время получения информации...</b>",
-      {
-        parse_mode: "HTML",
-      }
+    await send(
+      ctx,
+      "❌ <b>Произошла ошибка во время получения информации...</b>"
     );
+
+    return;
   }
 
   const html = data.childNodes[2];
@@ -201,33 +223,30 @@ client.command("changes", async (ctx) => {
 });
 
 client.command("trigger", async (ctx) => {
-  if (ctx.from.id !== 718443203) {
-    return ctx.reply(
-      "❌ <b>Данная команда доступна только владельцу бота!</b>",
-      {
-        parse_mode: "HTML",
-      }
-    );
+  if (!whitelist.includes(ctx.from.id)) {
+    await send(ctx, "❌ <b>Данная команда доступна только владельцу бота!</b>");
+    return;
   }
 
-  await job.trigger();
-  await ctx.reply("✅ <b>Успех!</b>", {
-    parse_mode: "HTML",
-  });
+  await CheckerJob.trigger();
+  await MailerJob.trigger();
 
+  await send(ctx, "✅ <b>Успех!</b>");
   return true;
 });
 
 client.command("stop", async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) {
+    await send(ctx, "❌ <b>Данная команда доступна только владельцу бота!</b>");
+    return;
+  }
+
   const data = await prisma.mailingUser.findFirst({
     where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
-    await ctx.reply("❌ <b>Вы не подписывались на рассылку!</b>", {
-      parse_mode: "HTML",
-    });
-
+    await send(ctx, "❌ <b>Вы не подписывались на рассылку!</b>");
     return;
   }
 
@@ -243,11 +262,9 @@ client.command("stop", async (ctx) => {
     where: { id: record.id },
   });
 
-  await ctx.reply(
-    "✅ <b>Вы успешно отписались от рассылки!</b>\n<b>Для повторной подписки воспользуйтесь командой /start</b>",
-    {
-      parse_mode: "HTML",
-    }
+  await send(
+    ctx,
+    "✅ <b>Вы успешно отписались от рассылки!</b>\n<b>Для повторной подписки воспользуйтесь командой /start</b>"
   );
 
   return true;
@@ -279,13 +296,9 @@ client.action("action:enable_mail", async (ctx) => {
       });
     }
 
-    await ctx.reply("Вы <b>подписались</b> на рассылку!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "Вы <b>подписались</b> на рассылку!");
   } else {
-    await ctx.reply("Вы уже <b>подписаны</b> на рассылку!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "Вы уже <b>подписаны</b> на рассылку!");
   }
 
   if (temp[ctx.from.id]) {
@@ -297,14 +310,14 @@ client.action("action:enable_mail", async (ctx) => {
 });
 
 client.action("action:disable_mail", async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) return;
+
   const data = await prisma.mailingUser.findFirst({
     where: { user_id: ctx.from.id.toString() },
   });
 
   if (!data) {
-    await ctx.reply("❌ Вы <b>не подписывались</b> на рассылку!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "❌ Вы <b>не подписывались</b> на рассылку!");
   } else {
     await prisma.mailingUser.delete({
       where: { id: data.id, user_id: ctx.from.id.toString() },
@@ -322,13 +335,11 @@ client.action("action:disable_mail", async (ctx) => {
       });
     }
 
-    await ctx.reply("Вы <b>отказались</b> от рассылки!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "Вы <b>отказались</b> от рассылки!");
   }
 
   if (temp[ctx.from.id]) {
-    await ctx.deleteMessage(temp[ctx.from.id]);
+    await ctx.deleteMessage(temp[ctx.from.id]).catch(() => {});
     temp[ctx.from.id] = null;
   }
 
@@ -351,12 +362,10 @@ client.action("action:continue_mail", async (ctx) => {
     });
   }
 
-  await ctx.reply("Вы <b>согласились</b> на дальнейшую рассылку!", {
-    parse_mode: "HTML",
-  });
+  await send(ctx, "Вы <b>согласились</b> на дальнейшую рассылку!");
 
   if (temp[ctx.from.id]) {
-    await ctx.deleteMessage(temp[ctx.from.id]);
+    await ctx.deleteMessage(temp[ctx.from.id]).catch(() => {});
     temp[ctx.from.id] = null;
   }
 
@@ -364,14 +373,14 @@ client.action("action:continue_mail", async (ctx) => {
 });
 
 client.action("action:ignore_mail", async (ctx) => {
+  if (!whitelist.includes(ctx.from.id)) return;
+
   const record = await prisma.lastRecord.findFirst({
     where: { user_id: ctx.from.id.toString() },
   });
 
   if (!record) {
-    await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "Вы <b>отказались</b> от получения рассылки!");
   } else {
     await prisma.lastRecord.delete({
       where: {
@@ -379,13 +388,11 @@ client.action("action:ignore_mail", async (ctx) => {
       },
     });
 
-    await ctx.reply("Вы <b>отказались</b> от получения рассылки!", {
-      parse_mode: "HTML",
-    });
+    await send(ctx, "Вы <b>отказались</b> от получения рассылки!");
   }
 
   if (temp[ctx.from.id]) {
-    await ctx.deleteMessage(temp[ctx.from.id]);
+    await ctx.deleteMessage(temp[ctx.from.id]).catch(() => {});
     temp[ctx.from.id] = null;
   }
 
