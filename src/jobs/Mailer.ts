@@ -44,24 +44,22 @@ export = (prisma: PrismaClient, client: Telegraf) => {
     for (const user of users) {
       if (!whitelist.includes(Number(user.user_id))) continue;
 
-      const schedule = schedules[0];
-      const schedule_link = schedule.attributes.getValue("href");
-      const schedule_index = links.findIndex(
-        (c) => c.childNodes[0].outerHTML === schedule.childNodes[0].outerHTML
-      );
-
-      const change = changes[0];
-      const change_link = change.attributes.getValue("href");
-      const change_index = links.findIndex(
-        (c) => c.childNodes[0].outerHTML === change.childNodes[0].outerHTML
-      );
-
       const record = await prisma.lastRecord.findFirst({
         where: { user_id: user.user_id },
       });
 
       if (!record) continue;
-      else {
+
+      var schedule_index = -1;
+      var schedule_link = "-";
+
+      if (schedules.length) {
+        const schedule = schedules[0];
+        schedule_link = schedule.attributes.getValue("href");
+        schedule_index = links.findIndex(
+          (c) => c.childNodes[0].outerHTML === schedule.childNodes[0].outerHTML
+        );
+
         if (shouldSend(record, "schedule", schedule_link)) {
           const name = schedule.childNodes[0].outerHTML
             .replaceAll(" ", "_")
@@ -102,11 +100,16 @@ export = (prisma: PrismaClient, client: Telegraf) => {
             });
           }
         }
+      }
 
-        if (
-          shouldSend(record, "change", change_link) &&
-          change_index < schedule_index
-        ) {
+      if (changes.length) {
+        const change = changes[0];
+        const change_link = change.attributes.getValue("href");
+        const change_index = links.findIndex(
+          (c) => c.childNodes[0].outerHTML === change.childNodes[0].outerHTML
+        );
+
+        if (shouldSend(record, "change", change_link)) {
           const name = change.childNodes[0].outerHTML
             .replaceAll(" ", "_")
             .slice(34)
@@ -123,19 +126,23 @@ export = (prisma: PrismaClient, client: Telegraf) => {
           }
 
           if (!errored) {
+            var to_update = {
+              user_id: user.user_id,
+              change: change_link,
+            };
+
+            if (schedule_link !== "-") {
+              to_update["schedule"] = schedule_link;
+            }
+
             await prisma.lastRecord.update({
-              data: {
-                user_id: user.user_id,
-
-                schedule: schedule_link,
-                change: change_link,
-              },
-
+              data: to_update,
               where: {
                 id: record.id,
               },
             });
           }
+          schedule_index !== -1 && change_index < schedule_index;
         }
       }
     }
